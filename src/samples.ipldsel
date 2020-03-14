@@ -1,7 +1,7 @@
 recursive(limit=5
   fields(
     'tree'(
-      recursive(
+      recursive(limit=none
         all(recurse)
       )
     )
@@ -24,8 +24,6 @@ fields('characters'(
 
 f'characters'f'kathryn-janeway'f'birthday'f'year'.
 
-p'characters/kathryn-janeway/birthday/year'.
-
 # Long Form
 fields('parent'(
   fields('parent'(
@@ -41,9 +39,6 @@ fields('parent'(
 
 # Short Form
 f'parent'f'parent'f'parent'f'parent'f'parent'.
-
-# Short Form
-p'parent/parent/parent/parent/parent'.
 
 # Long Form
 recursive(limit=5
@@ -61,7 +56,7 @@ recursive(
   fields(
     'prev'(recurse)
   )
-  stopAt=... # Conditions are not specified yet
+  #stopAt=... # Conditions are not specified yet
 )
 
 # Short Form
