@@ -81,8 +81,8 @@ R1000f'data'.()'links'*f'cid'~
 
 ## The following examples are aimed more at exercising the parser.
 
-# String with quotes embedded
-f'What''s up'.
+# String with escaped quote embedded
+f'What\'s up'.
 
 # String with newlines embedded
 f'this
@@ -142,6 +142,27 @@ f'with-label'.('label')'without-label'.
 # Another valid form
 f'with-label'.label=('label')'without-label'.
 
+
+fields
+  'foo'
+    match
+      label='blue'
+  'bar'
+    match
+
 # Broken minimized (strings are merged into one)
 f'with-label'.'label''without-label'.
+
+."This is a string isn't it?"
+
+.'This is also a "string".'
+
+.'This has\nescapes\tthat work.'
+
+."Lots-o-escapes \\\"\b\f\n\r\t"
+
+# Embedded unicode support
+.'😷'
+
+.'More escapes \'with quotes\''
 

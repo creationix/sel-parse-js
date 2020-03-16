@@ -3,29 +3,29 @@ const { readFileSync } = require('fs')
 const { parse: schemaParse } = require('ipld-schema')
 
 const dump = value => inspect(value, { depth: 100, colors: true })
-const helperMethods = {
-  expectedOneOf(value, types) {
-    throw new TypeError(`${dump(this.constructor)}: Expected one of (${types.map(dump).join(', ')}), but found ${dump(value)}`)
-  },
-  expected(value, type) {
-    throw new TypeError(`${dump(this.constructor)}: Expected ${dump(type)}, but found ${dump(value)}`)
-  }
-}
 
 const longest = (a, b) => b.length - a.length
 
 const schema = schemaParse(readFileSync(`${__dirname}/selectors.ipldsch`, 'utf8'))
 
+const escapes = {
+  b: "\b",
+  f: "\f",
+  n: "\n",
+  r: "\r",
+  t: "\t",
+}
+
+const evalEscape = m => escapes[m[1]] || m[1]
+
 function parseString(input, offset) {
-  if (input[offset] !== "'") return;
-  const parts = [];
-  while (input[offset] === "'") {
-    const match = input.substr(offset).match(/'([^']*)'/)
-    if (!match) throw new Error(`Missing closing quote in string at ${offset}`)
-    parts.push(match[1]);
-    offset += match[0].length;
-  }
-  return [parts.join("'"), offset]
+  const first = input[offset]
+  const match = first === "'" ? input.substr(offset).match(/^'((?:\\'|[^'])*)'/)
+    : first === '"' ? input.substr(offset).match(/^"((?:\\"|[^"])*)"/)
+      : undefined;
+  if (!match) return
+  const [all, inner] = match;
+  return [inner.replace(/\\./g, evalEscape), offset + all.length]
 }
 
 function parseInteger(input, offset) {
@@ -266,7 +266,7 @@ function parse(rawInput) {
   // Preprocess out whitespace and comments to make parsing easier.
   const input = rawInput
     // Split apart strings, comments, whitespace, and the rest.
-    .match(/(#[^\r\n]*|[ \r\n\t]+|'[^']*'|[^# \r\n\t']+)/g)
+    .match(/(#[^\r\n]*|[ \r\n\t]+|'(?:\\'|[^'])*'|"(?:\\"|[^"])*"|[^'"# \r\n\t]+)/g)
     // Filter out whitespace and comments.
     .filter(part => !/^[# \r\n\t]/.test(part))
     // Put it back together
