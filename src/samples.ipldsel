@@ -1,7 +1,7 @@
 recursive(limit=5
   fields(
     'tree'(
-      recursive(limit=none
+      recursive(
         all(recurse)
       )
     )
@@ -12,7 +12,7 @@ recursive(limit=5
 )
 
 # Starting at the commit block.
-R5f'tree'Rn*~'parents'*~
+R5f'tree'R*~'parents'*~
 
 fields('characters'(
   fields('kathryn-janeway'(
