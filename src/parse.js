@@ -58,7 +58,7 @@ function parenCheck(input, offset, parse) {
 }
 
 function emptyCheck(input, offset, parse) {
-  const result = parse(input, offset);
+  const result = parenCheck(input, offset, parse);
   if (!result || result[1] === offset) return;
   return result
 }
@@ -273,8 +273,13 @@ function parse(rawInput) {
     .join('')
   // console.log({ input })
 
+  let result
   try {
-    return parseSelectorEnvelope(input, 0)
+    result = parseSelectorEnvelope(input, 0)
+    if (!result) return
+    const [value, offset] = result
+    if (offset < input.length) throw new SyntaxError(`Unexpected extra syntax at ${offset}`)
+    return value;
   }
   catch (err) {
     if (err instanceof SyntaxError && /at [0-9]+$/.test(err.message)) {
@@ -300,11 +305,10 @@ const samples = readFileSync(`${__dirname}/samples.ipldsel`, 'utf8').split(/\r?\
 for (const sample of samples) {
   console.log("\nSample:\n")
   console.log("    " + sample.split("\n").join('\n    ') + "\n");
-  const result = parse(sample)
-  if (!result) {
+  const value = parse(sample)
+  if (!value) {
     console.log(`No Selector.\n`)
   } else {
-    const [value, newOffset] = result;
     console.log(`Result:\n\n    ${dump(value).split('\n').join('\n    ')}\n`);
   }
 }

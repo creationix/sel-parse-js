@@ -60,7 +60,7 @@ recursive(
 )
 
 # Short Form
-R100f'prev'~... # Conditions are not specified yet
+R100f'prev'~#... # Conditions are not specified yet
 
 # Long Form
 recursive(limit=1000
@@ -77,7 +77,7 @@ recursive(limit=1000
 )
 
 # Short Form
-R1000f'data'.'links'*f'cid'~
+R1000f'data'.()'links'*f'cid'~
 
 ## The following examples are aimed more at exercising the parser.
 
@@ -98,8 +98,50 @@ u(
   f'stuff'.
 )
 
-# Nested unions with parens
-u(u(.).)
+# Nested unions
+union(
+  union(
+    match
+  )
+  match
+)
 
-# Same without inner parens showing they change semantics
-u(u..)
+# Proper short form with parentheses
+uu(.).
+
+# Broken short form that changes semantics
+uu..
+
+# Fields with labels, maximum verbosity mode
+fields(
+  fields=(
+    'with-label'(
+      match(
+        label=('label')
+      )
+    )
+    'without-label'(
+      match()
+    )
+  )
+)
+
+# Fields with labels, human readable mode
+fields
+  'with-label'
+    match(label='label')
+  'without-label'
+    match
+
+# Properly Minimized
+f'with-label'(.'label')'without-label'.
+
+# Another Properly Minimized
+f'with-label'.('label')'without-label'.
+
+# Another valid form
+f'with-label'.label=('label')'without-label'.
+
+# Broken minimized (strings are merged into one)
+f'with-label'.'label''without-label'.
+
