@@ -78,3 +78,28 @@ recursive(limit=1000
 
 # Short Form
 R1000f'data'.'links'*f'cid'~
+
+## The following examples are aimed more at exercising the parser.
+
+# String with quotes embedded
+f'What''s up'.
+
+# String with newlines embedded
+f'this
+has
+newlines'.
+
+# Match with index
+i5.
+
+# Match with union
+u(
+  i5.
+  f'stuff'.
+)
+
+# Nested unions with parens
+u(u(.).)
+
+# Same without inner parens showing they change semantics
+u(u..)

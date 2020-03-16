@@ -90,8 +90,9 @@ function makeParser({ types }, entry, aliases = {}, ignores = []) {
     if (type === typeName) typeName = undefined
     if (type) {
       if (type === 'String') return parseString;
-      if (type.kind === 'int') return parseInteger;
+      if (type === 'Int' || type.kind === 'int') return parseInteger;
       if (type.kind === 'map') return genMap(type);
+      if (type.kind === 'list') return genList(type);
       if (type.kind === 'union' && type.representation && type.representation.keyed) return genKeyedUnion(typeName, type)
       if (type.kind === 'struct' && type.fields && type.representation && type.representation.map) return genMappedStruct(typeName, type)
     }
@@ -157,9 +158,10 @@ function makeParser({ types }, entry, aliases = {}, ignores = []) {
         start = offset;
         // console.log({ offset, rest: input.substr(offset) })
         for (let i = 0, l = names.length; i < l; i++) {
+          const fieldName = fieldNames[i];
+          if (fieldName in struct) continue;
           const name = names[i];
           if (startsWith(input, offset, name)) {
-            const fieldName = fieldNames[i];
             const { type } = fields[fieldName];
             const result = emptyCheck(input, offset + name.length, gen(type));
             if (!result) throw new SyntaxError(`Failed to parse named parameter at ${offset}`)
@@ -171,6 +173,7 @@ function makeParser({ types }, entry, aliases = {}, ignores = []) {
           }
         }
         for (const [key, { type }] of Object.entries(fields)) {
+          if (key in struct) continue;
           const result = emptyCheck(input, offset, gen(type))
           if (!result) continue;
           const [value, newOffset] = result;
@@ -192,6 +195,7 @@ function makeParser({ types }, entry, aliases = {}, ignores = []) {
           }
         }
       }
+      // console.log({ remapped })
       return [remapped, offset]
     }
   }
@@ -214,6 +218,22 @@ function makeParser({ types }, entry, aliases = {}, ignores = []) {
         offset = finalOffset
       }
       return map;
+    }
+  }
+
+  function genList({ valueType }) {
+    // console.log('genList', valueType)
+
+    return (input, offset) => {
+      const list = [];
+      while (true) {
+        const valueResult = emptyCheck(input, offset, gen(valueType));
+        if (!valueResult) break;
+        const [value, newOffset] = valueResult;
+        list.push(value);
+        offset = newOffset
+      }
+      return [list, offset];
     }
   }
 
@@ -281,8 +301,12 @@ for (const sample of samples) {
   console.log("\nSample:\n")
   console.log("    " + sample.split("\n").join('\n    ') + "\n");
   const result = parse(sample)
-  const [value, newOffset] = result;
-  console.log(`Result:\n\n    ${dump(value).split('\n').join('\n    ')}\n`);
+  if (!result) {
+    console.log(`No Selector.\n`)
+  } else {
+    const [value, newOffset] = result;
+    console.log(`Result:\n\n    ${dump(value).split('\n').join('\n    ')}\n`);
+  }
 }
 
 
