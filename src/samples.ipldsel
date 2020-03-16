@@ -150,19 +150,24 @@ fields
   'bar'
     match
 
-# Broken minimized (strings are merged into one)
+# valid with new string encoding
 f'with-label'.'label''without-label'.
 
-."This is a string isn't it?"
+.'This is a string isn\'t it?'
 
 .'This is also a "string".'
 
 .'This has\nescapes\tthat work.'
 
-."Lots-o-escapes \\\"\b\f\n\r\t"
+.'Lots-o-escapes "\\\b\f\n\r\t"'
 
 # Embedded unicode support
 .'😷'
 
 .'More escapes \'with quotes\''
 
+# This should fail with "Invalid escape at 17"
+.'Invalid escape \"'
+
+# This should fail with "Unterminated string at 1"
+.'unclosed string

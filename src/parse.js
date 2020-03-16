@@ -14,18 +14,22 @@ const escapes = {
   n: "\n",
   r: "\r",
   t: "\t",
+  "\\": "\\",
+  "'": "'",
 }
-
-const evalEscape = m => escapes[m[1]] || m[1]
 
 function parseString(input, offset) {
   const first = input[offset]
-  const match = first === "'" ? input.substr(offset).match(/^'((?:\\'|[^'])*)'/)
-    : first === '"' ? input.substr(offset).match(/^"((?:\\"|[^"])*)"/)
-      : undefined;
-  if (!match) return
+  if (first !== "'") return;
+  const match = input.substr(offset).match(/^'((?:\\'|[^'])*)'/);
+  if (!match) throw new SyntaxError(`Unterminated string at ${offset}`)
   const [all, inner] = match;
-  return [inner.replace(/\\./g, evalEscape), offset + all.length]
+  return [inner.replace(/\\./g, (esc, i) => {
+    const val = escapes[esc[1]];
+    if (val) return val;
+    console.log({ i })
+    throw new SyntaxError(`Invalid escape at ${offset + i + 1}`)
+  }), offset + all.length]
 }
 
 function parseInteger(input, offset) {
@@ -266,7 +270,7 @@ function parse(rawInput) {
   // Preprocess out whitespace and comments to make parsing easier.
   const input = rawInput
     // Split apart strings, comments, whitespace, and the rest.
-    .match(/(#[^\r\n]*|[ \r\n\t]+|'(?:\\'|[^'])*'|"(?:\\"|[^"])*"|[^'"# \r\n\t]+)/g)
+    .match(/(#[^\r\n]*|[ \r\n\t]+|'(?:\\'|[^'])*'?|[^'# \r\n\t]+)/g)
     // Filter out whitespace and comments.
     .filter(part => !/^[# \r\n\t]/.test(part))
     // Put it back together
@@ -305,11 +309,15 @@ const samples = readFileSync(`${__dirname}/samples.ipldsel`, 'utf8').split(/\r?\
 for (const sample of samples) {
   console.log("\nSample:\n")
   console.log("    " + sample.split("\n").join('\n    ') + "\n");
-  const value = parse(sample)
-  if (!value) {
-    console.log(`No Selector.\n`)
-  } else {
-    console.log(`Result:\n\n    ${dump(value).split('\n').join('\n    ')}\n`);
+  try {
+    const value = parse(sample)
+    if (!value) {
+      console.log(`No Selector.\n`)
+    } else {
+      console.log(`Result:\n\n    ${dump(value).split('\n').join('\n    ')}\n`);
+    }
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) throw err
   }
 }
 
