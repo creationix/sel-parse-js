@@ -20,7 +20,7 @@ type Selector union {
 	| ExploreRecursiveEdge "@" # sentinel value; only valid in some positions.
 } representation keyed
 
-## ExploreAll is similar to a `*` -- it traverses all elements of an array,
+## ExploreAll is similar to a `* ` -- it traverses all elements of an array,
 ## or all entries in a map, and applies a next selector to the reached nodes.
 type ExploreAll struct {
 	next Selector (rename ">")

@@ -1,12 +1,5 @@
-const { inspect } = require('util')
-const { readFileSync } = require('fs')
-const { parse: schemaParse } = require('ipld-schema')
-
-const dump = value => inspect(value, { depth: 100, colors: true })
 
 const longest = (a, b) => b.length - a.length
-
-const schema = schemaParse(readFileSync(`${__dirname}/selectors.ipldsch`, 'utf8'))
 
 const escapes = {
   b: "\b",
@@ -67,6 +60,7 @@ function emptyCheck(input, offset, parse) {
   return result
 }
 
+module.exports = makeParser
 function makeParser({ types }, entry, aliases = {}, ignores = []) {
 
   let parsers = new Map();
@@ -78,7 +72,38 @@ function makeParser({ types }, entry, aliases = {}, ignores = []) {
     });
   }
 
-  return gen(entry);
+  const parseEntry = gen(entry);
+
+  return (rawInput) => {
+    // Preprocess out whitespace and comments to make parsing easier.
+    const input = rawInput
+      // Split apart strings, comments, whitespace, and the rest.
+      .match(/(#[^\r\n]*|[ \r\n\t]+|'(?:\\'|[^'])*'?|[^'# \r\n\t]+)/g)
+      // Filter out whitespace and comments.
+      .filter(part => !/^[# \r\n\t]/.test(part))
+      // Put it back together
+      .join('')
+    // console.log({ input })
+
+    let result
+    try {
+      result = parseEntry(input, 0)
+      if (!result) return
+      const [value, offset] = result
+      if (offset < input.length) throw new SyntaxError(`Unexpected extra syntax at ${offset}`)
+      return value;
+    }
+    catch (err) {
+      if (err instanceof SyntaxError && /at [0-9]+$/.test(err.message)) {
+        const offset = parseInt(err.message.match(/[0-9]+$/)[0])
+        let rest = input.substr(offset)
+        if (rest.length > 40) rest = rest.substr(0, 40) + "..."
+        const indent = " ".repeat(offset + 14);
+        console.error(`\n\x1b[1;31mSyntaxError: "${input}"\n${indent}^ ${err.message}\x1b[0m\n`)
+      }
+      throw err
+    }
+  }
 
   function gen(type) {
     const existing = parsers.get(type);
@@ -243,82 +268,12 @@ function makeParser({ types }, entry, aliases = {}, ignores = []) {
 
 }
 
-const parseSelectorEnvelope = makeParser(schema, "SelectorEnvelope", {
-  Matcher: ['match', '.'],
-  ExploreAll: ['all', '*'],
-  ExploreFields: ['fields', 'f'],
-  ExploreIndex: ['index', 'i'],
-  ExploreRange: ['range', 'r'],
-  ExploreRecursive: ['recursive', 'R'],
-  ExploreUnion: ['union', 'u'],
-  ExploreConditional: ['condition', 'c'],
-  ExploreRecursiveEdge: ['recurse', '~'],
-  RecursionLimit_None: ['none', 'n'],
-}, [
-  "Condition",
-  "Condition_HasField",
-  "Condition_HasValue",
-  "Condition_HasKind",
-  "Condition_IsLink",
-  "Condition_GreaterThan",
-  "Condition_LessThan",
-  "Condition_And",
-  "Condition_Or",
-]);
-
-function parse(rawInput) {
-  // Preprocess out whitespace and comments to make parsing easier.
-  const input = rawInput
-    // Split apart strings, comments, whitespace, and the rest.
-    .match(/(#[^\r\n]*|[ \r\n\t]+|'(?:\\'|[^'])*'?|[^'# \r\n\t]+)/g)
-    // Filter out whitespace and comments.
-    .filter(part => !/^[# \r\n\t]/.test(part))
-    // Put it back together
-    .join('')
-  // console.log({ input })
-
-  let result
-  try {
-    result = parseSelectorEnvelope(input, 0)
-    if (!result) return
-    const [value, offset] = result
-    if (offset < input.length) throw new SyntaxError(`Unexpected extra syntax at ${offset}`)
-    return value;
-  }
-  catch (err) {
-    if (err instanceof SyntaxError && /at [0-9]+$/.test(err.message)) {
-      const offset = parseInt(err.message.match(/[0-9]+$/)[0])
-      let rest = input.substr(offset)
-      if (rest.length > 40) rest = rest.substr(0, 40) + "..."
-      const indent = " ".repeat(offset + 14);
-      console.error(`\n\x1b[1;31mSyntaxError: "${input}"\n${indent}^ ${err.message}\x1b[0m\n`)
-    }
-    throw err
-  }
-}
-
 function startsWith(input, offset, keyword) {
   if (input.length - offset < keyword.length) return false;
   for (let i = 0, l = keyword.length, l2 = input.length - offset; i < l && i < l2; i++) {
     if (keyword[i] !== input[offset + i]) return false
   }
   return true
-}
-
-const samples = readFileSync(`${__dirname}/samples.ipldsel`, 'utf8').split(/\r?\n\r?\n/).map(str => str.trim()).filter(Boolean)
-for (const sample of samples) {
-  console.log("\nSample:\n")
-  console.log("    " + sample.split("\n").join('\n    ') + "\n");
-  try {
-    const value = parse(sample)
-    if (!value) {
-      console.log(`No Selector.\n`)
-    } else {
-      console.log(`Result:\n\n    ${dump(value).split('\n').join('\n    ')}\n`);
-    }
-  } catch (err) {
-    if (!(err instanceof SyntaxError)) throw err
-  }
 }
 
 
